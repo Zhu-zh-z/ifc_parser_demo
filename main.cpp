@@ -33,10 +33,13 @@ int main(int argc, char** argv) {
         const IfcInput input = reader.read(inputPath);
 
         // ifc_extractor
-        StubIfcExtractor extractor;
+        IfcExtractor extractor;
         ExtractResult extracted = extractor.extract(input);
         if (extracted.instances.empty()) {
             throw std::runtime_error("Extractor returned no instances.");
+        }
+        for (const IfcInstance& instance : extracted.instances) {
+            std::cout << formatExtractionLogLine(instance) << "\n";
         }
 
         // geometry_normalization

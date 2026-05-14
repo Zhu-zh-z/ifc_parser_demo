@@ -16,14 +16,9 @@ public:
     virtual ExtractResult extract(const IfcInput& input) = 0;
 };
 
-class StubIfcExtractor : public IIfcExtractor {
+class IfcExtractor : public IIfcExtractor {
 public:
-    ExtractResult extract(const IfcInput& input) override {
-        (void)input;
-        IfcInstance stub;
-        stub.instanceId = "inst_001";
-        stub.geometryId = "geom_box_001";
-        stub.sourceType = "stub";
-        return ExtractResult{{stub}};
-    }
+    ExtractResult extract(const IfcInput& input) override;
 };
+
+std::string formatExtractionLogLine(const IfcInstance& instance);

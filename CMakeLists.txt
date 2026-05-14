@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_executable(ifc-parse
     main.cpp
     io/ifc_file_reader.cpp
+    ifc_extractor/extractor.cpp
     geometry_normalization/geometry_myimpl.cpp
     geometry_normalization/geometry_libimpl.cpp
 )
