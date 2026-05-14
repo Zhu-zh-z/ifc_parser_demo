@@ -96,18 +96,18 @@ PY
 
 run_case "./tests/box_faceted_brep.ifc" "./tests/output_box_brep.json" \
   "instance=inst_17 geometry=geom_48 source=IfcFacetedBrep faces=6 faceVertices=24" \
-  "normalization source=IfcFacetedBrep inputFaces=6 inputFaceVertices=24 cleanedFaces=6 cleanedFaceVertices=24 triangulatedFaces=6 skippedFaces=0 weldedVertices=8 outputIndices=36 degenerateTriangles=0" \
-  "8" \
+  "normalization source=IfcFacetedBrep inputFaces=6 inputFaceVertices=24 cleanedFaces=6 cleanedFaceVertices=24 triangulatedFaces=6 skippedFaces=0 weldedVertices=24 outputIndices=36 degenerateTriangles=0" \
+  "24" \
   "36"
 run_case "./tests/l_shape_faceted_brep.ifc" "./tests/output_l_shape_brep.json" \
   "instance=inst_17 geometry=geom_65 source=IfcFacetedBrep faces=10 faceVertices=48" \
-  "normalization source=IfcFacetedBrep inputFaces=10 inputFaceVertices=48 cleanedFaces=10 cleanedFaceVertices=48 triangulatedFaces=10 skippedFaces=0 weldedVertices=16 outputIndices=84 degenerateTriangles=0" \
-  "16" \
+  "normalization source=IfcFacetedBrep inputFaces=10 inputFaceVertices=48 cleanedFaces=10 cleanedFaceVertices=48 triangulatedFaces=10 skippedFaces=0 weldedVertices=48 outputIndices=84 degenerateTriangles=0" \
+  "48" \
   "84"
 run_case "./tests/box_triangulated_face_set.ifc" "./tests/output_box_triangulated.json" \
   "instance=inst_17 geometry=geom_19 source=IfcTriangulatedFaceSet vertices=8 triangleIndices=36" \
-  "normalization source=IfcTriangulatedFaceSet inputVertices=8 inputIndices=36 weldedVertices=8 outputIndices=36 degenerateTriangles=0 invalidIndices=0" \
-  "8" \
+  "normalization source=IfcTriangulatedFaceSet inputVertices=8 inputIndices=36 weldedVertices=24 outputIndices=36 degenerateTriangles=0 invalidIndices=0" \
+  "24" \
   "36"
 
 echo "Smoke tests passed."

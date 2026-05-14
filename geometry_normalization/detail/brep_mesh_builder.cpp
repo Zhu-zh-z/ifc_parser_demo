@@ -110,6 +110,18 @@ std::vector<Vec3> cleanPolygon(const std::vector<Vec3>& raw) {
     return cleaned;
 }
 
+Vec3 computeCentroid(const std::vector<Vec3>& points) {
+    Vec3 centroid{};
+    if (points.empty()) {
+        return centroid;
+    }
+
+    for (const Vec3& point : points) {
+        centroid = GeometryMath::add(centroid, point);
+    }
+    return GeometryMath::scale(centroid, 1.0f / static_cast<float>(points.size()));
+}
+
 bool triangulateFace(const std::vector<Vec3>& polygon3d, std::vector<std::array<size_t, 3>>& outTriangles) {
     outTriangles.clear();
     if (polygon3d.size() < 3) {
@@ -200,7 +212,11 @@ MeshResult buildBrepMesh(const IfcInstance& instance, BrepBuildStats* stats) {
     BrepBuildStats localStats;
     localStats.inputFaceCount = instance.faces.size();
 
-    std::vector<std::array<size_t, 3>> triangles;
+    std::vector<std::vector<Vec3>> cleanedFaces;
+    cleanedFaces.reserve(instance.faces.size());
+
+    Vec3 shellCenterAccumulator{};
+    size_t shellCenterPointCount = 0;
     for (const IfcFace& face : instance.faces) {
         localStats.inputFaceVertexCount += face.vertices.size();
         std::vector<Vec3> cleaned = cleanPolygon(face.vertices);
@@ -211,15 +227,35 @@ MeshResult buildBrepMesh(const IfcInstance& instance, BrepBuildStats* stats) {
 
         ++localStats.cleanedFaceCount;
         localStats.cleanedFaceVertexCount += cleaned.size();
+        shellCenterAccumulator = GeometryMath::add(shellCenterAccumulator, computeCentroid(cleaned));
+        ++shellCenterPointCount;
+        cleanedFaces.push_back(std::move(cleaned));
+    }
 
+    Vec3 shellCenter{};
+    if (shellCenterPointCount > 0) {
+        shellCenter = GeometryMath::scale(shellCenterAccumulator, 1.0f / static_cast<float>(shellCenterPointCount));
+    }
+
+    std::vector<std::array<size_t, 3>> triangles;
+    for (const std::vector<Vec3>& cleaned : cleanedFaces) {
         if (!triangulateFace(cleaned, triangles)) {
             ++localStats.skippedFaceCount;
             continue;
         }
 
+        const Vec3 faceNormal = computeFaceNormalNewell(cleaned);
+        const Vec3 faceCenter = computeCentroid(cleaned);
+        const Vec3 outwardHint = GeometryMath::sub(faceCenter, shellCenter);
+        const bool flipWinding = GeometryMath::dot(faceNormal, outwardHint) < 0.0f;
+
         ++localStats.triangulatedFaceCount;
         for (const auto& tri : triangles) {
-            builder.addTriangle(cleaned[tri[0]], cleaned[tri[1]], cleaned[tri[2]]);
+            if (flipWinding) {
+                builder.addTriangle(cleaned[tri[0]], cleaned[tri[2]], cleaned[tri[1]]);
+            } else {
+                builder.addTriangle(cleaned[tri[0]], cleaned[tri[1]], cleaned[tri[2]]);
+            }
         }
     }
 
