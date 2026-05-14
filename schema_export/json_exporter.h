@@ -30,10 +30,18 @@ public:
         out << "      \"geometryId\": \"" << doc.geometryId << "\",\n";
         out << "      \"geometryKey\": \"" << doc.geometryKey << "\",\n";
         out << "      \"mesh\": {\n";
-        out << "        \"positions\": [],\n";
-        out << "        \"normals\": [],\n";
-        out << "        \"uvs\": [],\n";
-        out << "        \"indices\": []\n";
+        out << "        \"positions\": ";
+        writeVec3Array(out, doc.mesh.positions);
+        out << ",\n";
+        out << "        \"normals\": ";
+        writeVec3Array(out, doc.mesh.normals);
+        out << ",\n";
+        out << "        \"uvs\": ";
+        writeVec2Array(out, doc.mesh.uvs);
+        out << ",\n";
+        out << "        \"indices\": ";
+        writeUIntArray(out, doc.mesh.indices);
+        out << "\n";
         out << "      }\n";
         out << "    }\n";
         out << "  ],\n";
@@ -49,5 +57,39 @@ public:
         out << "    }\n";
         out << "  ]\n";
         out << "}\n";
+    }
+
+private:
+    static void writeVec3Array(std::ofstream& out, const std::vector<Vec3>& values) {
+        out << "[";
+        for (size_t i = 0; i < values.size(); ++i) {
+            if (i > 0) {
+                out << ",";
+            }
+            out << "[" << values[i].x << "," << values[i].y << "," << values[i].z << "]";
+        }
+        out << "]";
+    }
+
+    static void writeVec2Array(std::ofstream& out, const std::vector<Vec2>& values) {
+        out << "[";
+        for (size_t i = 0; i < values.size(); ++i) {
+            if (i > 0) {
+                out << ",";
+            }
+            out << "[" << values[i].x << "," << values[i].y << "]";
+        }
+        out << "]";
+    }
+
+    static void writeUIntArray(std::ofstream& out, const std::vector<unsigned int>& values) {
+        out << "[";
+        for (size_t i = 0; i < values.size(); ++i) {
+            if (i > 0) {
+                out << ",";
+            }
+            out << values[i];
+        }
+        out << "]";
     }
 };

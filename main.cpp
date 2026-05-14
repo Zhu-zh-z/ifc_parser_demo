@@ -16,7 +16,7 @@ void printUsage() {
     std::cerr << "Usage: ifc-parse <input.ifc> -o <output.json>\n";
 }
 
-} // namespace
+} 
 
 int main(int argc, char** argv) {
     if (argc != 4 || std::string(argv[2]) != "-o") {

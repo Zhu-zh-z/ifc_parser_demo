@@ -11,6 +11,10 @@ add_executable(ifc-parse
     ifc_extractor/extractor.cpp
     geometry_normalization/geometry_myimpl.cpp
     geometry_normalization/geometry_libimpl.cpp
+    geometry_normalization/detail/builtin_geometry_normalizer.cpp
+    geometry_normalization/detail/mesh_builder.cpp
+    geometry_normalization/detail/tessellated_mesh_builder.cpp
+    geometry_normalization/detail/brep_mesh_builder.cpp
 )
 
 target_include_directories(ifc-parse PRIVATE

@@ -20,13 +20,5 @@ public:
     virtual MeshResult buildMesh(const IfcInstance& instance) = 0;
 };
 
-class StubGeometryNormalizer : public IGeometryNormalizer {
-public:
-    MeshResult buildMesh(const IfcInstance& instance) override {
-        (void)instance;
-        return MeshResult{};
-    }
-};
-
 std::unique_ptr<IGeometryNormalizer> createGeometryMyImpl();
 std::unique_ptr<IGeometryNormalizer> createGeometryLibImpl();
