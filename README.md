@@ -2,17 +2,15 @@
 
 ## Goal
 
-`ifc_parser_demo` is a minimal IFC -> renderer schema conversion demo implemented in pure C++ without third-party dependencies.
+`ifc_parser_demo` is a minimal, dependency-free C++ IFC -> renderer schema conversion demo for a small IFC/STEP geometry subset.
 
-It does not replace mature IFC tools such as IfcOpenShell or xBIM, and it does not use IFCX as an input format. This demo only validates one controlled pipeline: read geometry from a minimal IFC/STEP subset, convert `IfcFacetedBrep` and `IfcTriangulatedFaceSet` into a unified renderable mesh, and export an intermediate schema for the viewer/runtime. The schema includes the metadata needed for geometry reuse and batching.
-
-A mature IFC toolchain can handle full IFC semantic parsing and geometry conversion. This demo focuses on rendering-side hints such as `geometryKey`, `batchHint`, and `canInstance`, helping the viewer reuse GPU buffers and leaving an interface for future instanced batching.
+It is not a replacement for mature IFC tools such as IfcOpenShell or xBIM. The demo focuses on `IfcFacetedBrep` / `IfcTriangulatedFaceSet` mesh conversion and rendering hints such as `geometryKey`, `batchHint`, and `canInstance`.
 
 For now, it validates a clear minimal pipeline:
 
 1. Read a `.ifc` file.
 2. Extract a minimal subset of the IFC STEP Part 21 text format.
-3. Identify one or a few simplified test elements and their `Body` geometric representations.
+3. Identify supported simplified test elements and their `Body` geometric representations.
 4. Support two restricted geometry inputs: planar polygon faces extracted from `IfcFacetedBrep`, and already-triangulated `IfcTriangulatedFaceSet`.
 5. Convert quadrilateral faces, concave polygons, and already-triangulated faces into a unified renderable triangle mesh.
 6. Generate a `geometryId` and a stable `geometryKey` for the converted geometry.
@@ -25,44 +23,67 @@ The mathematical computation is not the final goal of this demo. It is only the 
 
 The current hand-written implementation first covers two geometry branches:
 
-- faceted BRep path: Extract planar polygon faces from `IfcFacetedBrep` / `IfcFace` / `IfcPolyLoop`, handle duplicate points, collinear points, and winding, then generate triangles through 3D -> 2D projection and ear clipping.
+- faceted BRep path: Extract planar polygon faces from `IfcFacetedBrep` / `IfcFace` / `IfcPolyLoop`, handle duplicate points and collinear points, triangulate polygons through 3D -> 2D projection and ear clipping, then orient triangles with a topology pass (edge manifold checks + BFS consistency + signed-volume global direction) instead of shell-center heuristics.
 - tessellation path: Read the point list and triangle indices directly from `IfcTriangulatedFaceSet`, without projection or polygon triangulation.
-- shared mesh cleanup: Both branches perform the required vertex welding, degenerate triangle filtering, and normal generation, then output a unified renderable mesh.
+- shared mesh cleanup: Both branches clean duplicate or degenerate input points, filter degenerate triangles, and then preserve or split vertices as needed for hard-edge normal generation before outputting a unified renderable mesh.
 
-These computations will first live in `geometry_myimpl.cpp` as a minimal implementation.
+The public factory currently lives in `geometry_myimpl.cpp`; the hand-written conversion logic lives under `geometry_normalization/detail/`.
 
 ## Field Conventions
 
-- `geometryId`: Geometry id used for references within the current exported file.
-- `geometryKey`: Stable reuse key generated from the geometry content.
-- `batchHint`: Rendering metadata generated during conversion; it is not standard IFC semantics.
-- `canInstance`: Indicates that the geometry satisfies the geometric requirements for instanced batching. Whether it is actually batched is decided by the viewer/runtime together with material and render-state constraints.
-- `transform`: Instance placement matrix. In this pass it only stores local offset translation for centered geometry prototypes.
+- `geometryId`: Per-file geometry reference id.
+- `geometryKey`: Stable reuse key generated from mesh content.
+- `batchHint`: Rendering metadata, not standard IFC semantics.
+- `canInstance`: Whether the geometry is safe for future instanced batching.
+- `transform`: Instance matrix; currently only stores the local offset for centered geometry.
 
 ## Limitations
 
-Reusable geometry is currently limited to simple planar, hard-edge shapes such as boxes and L-shapes. Complex surfaces, holes, booleans, texture/UV workflows, and unsafe scaling should stay non-instanced until safe reuse can be proven.
+This demo intentionally supports only a narrow IFC subset:
 
-Geometry prototypes keep real dimensions: this pass only centers `mesh.positions` and writes the original center into `transform` as local-offset translation. It does not yet make keys independent from vertex/index ordering differences.
+- The CLI exports the first supported building element instance only.
+- Geometry input is limited to simplified `IfcFacetedBrep` shells and `IfcTriangulatedFaceSet`.
+- Geometry reuse is limited to simple planar, hard-edge shapes such as boxes and L-shapes.
+- Complex surfaces, holes, booleans, materials, UVs, and unsafe scaling are out of scope.
+- Meshes keep real dimensions; positions are centered and the original center is written to `transform`.
+- `geometryKey` is stable for emitted mesh content, but not for all possible vertex/index orderings.
 
 ## Project Structure
 
 ```text
 ifc_parser_demo/
+├── CMakeLists.txt             # Build the `ifc-parse` demo executable.
+├── main.cpp                   # CLI entry point.
 ├── io/                       # Read `.ifc` file content.
 ├── ifc_extractor/            # Extract the minimal IFC/STEP subset.
 ├── geometry_normalization/   # Convert supported geometry into renderable meshes.
+│   └── detail/                # Current hand-written geometry implementation.
 ├── schema_export/            # Generate keys, hints, and JSON schema output.
 ├── utils/                    # Small math and tolerance helpers.
-└── tests/                    # IFC fixtures and placeholder outputs.
+└── tests/                    # IFC fixtures, generated outputs, and smoke tests.
 ```
 
-## Test Commands
+## Build and Test Commands
+
+Build the demo executable:
 
 ```bash
-ifc-parse ./tests/box_faceted_brep.ifc -o ./tests/output_box_brep.json
-ifc-parse ./tests/l_shape_faceted_brep.ifc -o ./tests/output_l_shape_brep.json
-ifc-parse ./tests/box_triangulated_face_set.ifc -o ./tests/output_box_triangulated.json
+cmake -S . -B build
+cmake --build build
+```
+
+Run the README fixture commands with the built binary:
+
+```bash
+./build/ifc-parse ./tests/box_faceted_brep.ifc -o ./tests/output_box_brep.json
+./build/ifc-parse ./tests/l_shape_faceted_brep.ifc -o ./tests/output_l_shape_brep.json
+./build/ifc-parse ./tests/box_triangulated_face_set.ifc -o ./tests/output_box_triangulated.json
+```
+
+Run the smoke test suite:
+
+```bash
+ctest --test-dir build
 ```
 
 Test inputs:
@@ -71,7 +92,7 @@ Test inputs:
 - `l_shape_faceted_brep.ifc`: An L-shaped concave polygon solid using `IfcFacetedBrep`, used to validate projection, winding, and ear clipping triangulation.
 - `box_triangulated_face_set.ifc`: A box using `IfcTriangulatedFaceSet`, used to validate already-triangulated IFC tessellation input.
 
-Example output:
+Simplified example output shape:
 
 ```json
 {
