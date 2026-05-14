@@ -38,6 +38,14 @@ These computations will first live in `geometry_myimpl.cpp` as a minimal impleme
 - `batchHint`: Rendering metadata generated during conversion; it is not standard IFC semantics.
 - `canInstance`: Indicates that the geometry satisfies the geometric requirements for instanced batching. Whether it is actually batched is decided by the viewer/runtime together with material and render-state constraints.
 
+## Limitations
+
+The reusable-geometry scope is limited to simple planar, hard-edge shapes like the current fixture files: boxes, L-shapes, and similar basic BIM components.
+
+Curved/freeform surfaces, holes/inner bounds, complex booleans, special UV layouts, and unsafe scaling cases are outside this scope for now. They can still be exported as fallback geometry, but should default to `canInstance=false` until safe reuse can be proven.
+
+Within this scope, geometry prototypes keep real dimensions: canonicalization may center and orient geometry, but must not scale, stretch, or deform it. Instance transforms carry placement and rotation; scale is only for real source-authored instance scaling.
+
 ## Project Structure
 
 ```text
@@ -71,7 +79,7 @@ Example output:
   "geometries": [
     {
       "geometryId": "geom_box_001",
-      "geometryKey": "box_3800_1600_2200",
+      "geometryKey": "gk_example_stable_hash",
       "mesh": {
         "positions": [],
         "normals": [],
@@ -86,7 +94,7 @@ Example output:
       "geometryId": "geom_box_001",
       "transform": [],
       "batchHint": {
-        "geometryKey": "box_3800_1600_2200",
+        "geometryKey": "gk_example_stable_hash",
         "canInstance": true
       }
     }
