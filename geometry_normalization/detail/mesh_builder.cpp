@@ -51,6 +51,17 @@ FlatVertexKey makeFlatVertexKey(unsigned int positionIndex, const Vec3& faceNorm
     };
 }
 
+Vec3 sanitizeSignedZero(const Vec3& v) {
+    const auto normalizeZero = [](float value) -> float {
+        return value == 0.0f ? 0.0f : value;
+    };
+    return Vec3{
+        normalizeZero(v.x),
+        normalizeZero(v.y),
+        normalizeZero(v.z),
+    };
+}
+
 } 
 
 size_t MeshBuilder::QuantizedKeyHash::operator()(const QuantizedKey& key) const {
@@ -134,7 +145,7 @@ MeshResult finalizeMesh(const MeshBuilder& builder) {
 
         const unsigned int outIndex = static_cast<unsigned int>(mesh.positions.size());
         mesh.positions.push_back(sourcePositions[sourceIndex]);
-        mesh.normals.push_back(faceNormal);
+        mesh.normals.push_back(sanitizeSignedZero(faceNormal));
         flatVertexToIndex.emplace(key, outIndex);
         return outIndex;
     };

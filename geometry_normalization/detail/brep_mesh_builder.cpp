@@ -154,7 +154,14 @@ bool pointInTriangle2D(const Vec2& p, const Vec2& a, const Vec2& b, const Vec2& 
 bool isCollinear(const Vec3& prev, const Vec3& curr, const Vec3& next) {
     const Vec3 a = GeometryMath::sub(curr, prev);
     const Vec3 b = GeometryMath::sub(next, curr);
-    return GeometryMath::lengthSquared(GeometryMath::cross(a, b)) <= kEpsilon * kEpsilon;
+    const float lenSqA = GeometryMath::lengthSquared(a);
+    const float lenSqB = GeometryMath::lengthSquared(b);
+    if (lenSqA <= kEpsilon * kEpsilon || lenSqB <= kEpsilon * kEpsilon) {
+        return true;
+    }
+
+    const float crossLenSq = GeometryMath::lengthSquared(GeometryMath::cross(a, b));
+    return crossLenSq <= (kEpsilon * kEpsilon) * lenSqA * lenSqB;
 }
 
 std::vector<Vec3> cleanPolygon(const std::vector<Vec3>& raw) {
