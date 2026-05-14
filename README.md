@@ -11,7 +11,7 @@ A mature IFC toolchain can handle full IFC semantic parsing and geometry convers
 For now, it validates a clear minimal pipeline:
 
 1. Read a `.ifc` file.
-2. Parse a minimal subset of the IFC STEP Part 21 text format.
+2. Extract a minimal subset of the IFC STEP Part 21 text format.
 3. Identify one or a few simplified test elements and their `Body` geometric representations.
 4. Support two restricted geometry inputs: planar polygon faces extracted from `IfcFacetedBrep`, and already-triangulated `IfcTriangulatedFaceSet`.
 5. Convert quadrilateral faces, concave polygons, and already-triangulated faces into a unified renderable triangle mesh.
@@ -29,7 +29,7 @@ The current hand-written implementation first covers two geometry branches:
 - tessellation path: Read the point list and triangle indices directly from `IfcTriangulatedFaceSet`, without projection or polygon triangulation.
 - shared mesh cleanup: Both branches perform the required vertex welding, degenerate triangle filtering, and normal generation, then output a unified renderable mesh.
 
-These computations will first live in `geom_myimpl.cpp` as a minimal implementation.
+These computations will first live in `geometry_myimpl.cpp` as a minimal implementation.
 
 ## Field Conventions
 
@@ -37,6 +37,18 @@ These computations will first live in `geom_myimpl.cpp` as a minimal implementat
 - `geometryKey`: Stable reuse key generated from the geometry content.
 - `batchHint`: Rendering metadata generated during conversion; it is not standard IFC semantics.
 - `canInstance`: Indicates that the geometry satisfies the geometric requirements for instanced batching. Whether it is actually batched is decided by the viewer/runtime together with material and render-state constraints.
+
+## Project Structure
+
+```text
+ifc_parser_demo/
+├── io/                       # Read `.ifc` file content.
+├── ifc_extractor/            # Extract the minimal IFC/STEP subset.
+├── geometry_normalization/   # Convert supported geometry into renderable meshes.
+├── schema_export/            # Generate keys, hints, and JSON schema output.
+├── utils/                    # Small math and tolerance helpers.
+└── tests/                    # IFC fixtures and placeholder outputs.
+```
 
 ## Test Commands
 
