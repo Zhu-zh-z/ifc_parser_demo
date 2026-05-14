@@ -40,8 +40,20 @@ MeshResult BuiltinGeometryNormalizer::buildMesh(const IfcInstance& instance) {
     }
 
     if (instance.sourceType == "IfcFacetedBrep") {
-        MeshResult mesh = buildBrepStubMesh(instance);
-        std::cout << "normalization source=IfcFacetedBrep status=notImplemented outputIndices=0\n";
+        BrepBuildStats stats;
+        MeshResult mesh = buildBrepMesh(instance, &stats);
+        std::cout
+            << "normalization source=IfcFacetedBrep"
+            << " inputFaces=" << stats.inputFaceCount
+            << " inputFaceVertices=" << stats.inputFaceVertexCount
+            << " cleanedFaces=" << stats.cleanedFaceCount
+            << " cleanedFaceVertices=" << stats.cleanedFaceVertexCount
+            << " triangulatedFaces=" << stats.triangulatedFaceCount
+            << " skippedFaces=" << stats.skippedFaceCount
+            << " weldedVertices=" << stats.weldedVertexCount
+            << " outputIndices=" << stats.outputIndexCount
+            << " degenerateTriangles=" << stats.degenerateTriangleCount
+            << "\n";
         return mesh;
     }
 
