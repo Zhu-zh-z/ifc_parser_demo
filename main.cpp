@@ -7,6 +7,7 @@
 #include "ifc_extractor/extractor.h"
 #include "io/ifc_reader.h"
 #include "schema_export/batch_hint.h"
+#include "schema_export/canonical_mesh.h"
 #include "schema_export/json_exporter.h"
 #include "schema_export/key_generator.h"
 
@@ -42,15 +43,16 @@ int main(int argc, char** argv) {
         // geometry_normalization
         std::unique_ptr<IGeometryNormalizer> normalizer = createGeometryMyImpl();
         const MeshResult mesh = normalizer->buildMesh(extracted.instances.front());
+        const CanonicalMeshResult canonicalMesh = canonicalizeMeshForReuse(mesh);
 
         // schema keys/hints + JSON export
-        const std::string geometryKey = generateGeometryKey(mesh);
+        const std::string geometryKey = generateGeometryKey(canonicalMesh.mesh);
         const IfcInstance& primaryInstance = extracted.instances.front();
 
         BatchHint hint;
         hint.geometryKey = geometryKey;
-        hint.canInstance = !mesh.positions.empty()
-            && !mesh.indices.empty()
+        hint.canInstance = !canonicalMesh.mesh.positions.empty()
+            && !canonicalMesh.mesh.indices.empty()
             && (primaryInstance.sourceType == "IfcFacetedBrep"
                 || primaryInstance.sourceType == "IfcTriangulatedFaceSet");
 
@@ -59,7 +61,8 @@ int main(int argc, char** argv) {
             ? "geom_box_001"
             : primaryInstance.geometryId;
         doc.geometryKey = geometryKey;
-        doc.mesh = mesh;
+        doc.mesh = canonicalMesh.mesh;
+        doc.localOffset = canonicalMesh.localOffset;
         doc.instance = primaryInstance;
         doc.batchHint = hint;
 

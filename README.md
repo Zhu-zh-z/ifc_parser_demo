@@ -37,14 +37,13 @@ These computations will first live in `geometry_myimpl.cpp` as a minimal impleme
 - `geometryKey`: Stable reuse key generated from the geometry content.
 - `batchHint`: Rendering metadata generated during conversion; it is not standard IFC semantics.
 - `canInstance`: Indicates that the geometry satisfies the geometric requirements for instanced batching. Whether it is actually batched is decided by the viewer/runtime together with material and render-state constraints.
+- `transform`: Instance placement matrix. In this pass it only stores local offset translation for centered geometry prototypes.
 
 ## Limitations
 
-The reusable-geometry scope is limited to simple planar, hard-edge shapes like the current fixture files: boxes, L-shapes, and similar basic BIM components.
+Reusable geometry is currently limited to simple planar, hard-edge shapes such as boxes and L-shapes. Complex surfaces, holes, booleans, special UV layouts, and unsafe scaling should stay non-instanced until safe reuse can be proven.
 
-Curved/freeform surfaces, holes/inner bounds, complex booleans, special UV layouts, and unsafe scaling cases are outside this scope for now. They can still be exported as fallback geometry, but should default to `canInstance=false` until safe reuse can be proven.
-
-Within this scope, geometry prototypes keep real dimensions: canonicalization may center and orient geometry, but must not scale, stretch, or deform it. Instance transforms carry placement and rotation; scale is only for real source-authored instance scaling.
+Geometry prototypes keep real dimensions: this pass only centers `mesh.positions` and writes the original center into `transform` as local-offset translation. It does not yet make keys independent from vertex/index ordering differences.
 
 ## Project Structure
 
@@ -92,7 +91,12 @@ Example output:
     {
       "instanceId": "inst_001",
       "geometryId": "geom_box_001",
-      "transform": [],
+      "transform": [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        1900, 800, 1100, 1
+      ],
       "batchHint": {
         "geometryKey": "gk_example_stable_hash",
         "canInstance": true

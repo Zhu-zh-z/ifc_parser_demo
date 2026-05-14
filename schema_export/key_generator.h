@@ -55,10 +55,6 @@ inline std::string generateGeometryKey(const MeshResult& mesh) {
         maxZ = std::max(maxZ, position.z);
     }
 
-    const float centerX = (minX + maxX) * 0.5f;
-    const float centerY = (minY + maxY) * 0.5f;
-    const float centerZ = (minZ + maxZ) * 0.5f;
-
     const float dimX = maxX - minX;
     const float dimY = maxY - minY;
     const float dimZ = maxZ - minZ;
@@ -73,10 +69,12 @@ inline std::string generateGeometryKey(const MeshResult& mesh) {
     mixUInt64(hashState, static_cast<std::uint64_t>(mesh.uvs.size()));
     mixUInt64(hashState, static_cast<std::uint64_t>(mesh.indices.size()));
 
+    // Translation canonicalization happens before key generation. This pass does
+    // not canonicalize vertex/index ordering across different source paths.
     for (const Vec3& position : mesh.positions) {
-        mixInt64(hashState, quantize(position.x - centerX));
-        mixInt64(hashState, quantize(position.y - centerY));
-        mixInt64(hashState, quantize(position.z - centerZ));
+        mixInt64(hashState, quantize(position.x));
+        mixInt64(hashState, quantize(position.y));
+        mixInt64(hashState, quantize(position.z));
     }
 
     for (const Vec3& normal : mesh.normals) {

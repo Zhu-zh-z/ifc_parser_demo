@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <fstream>
 #include <stdexcept>
 #include <string>
@@ -7,11 +8,13 @@
 #include "geometry_normalization/geometry_interface.h"
 #include "ifc_extractor/instance.h"
 #include "schema_export/batch_hint.h"
+#include "schema_export/canonical_mesh.h"
 
 struct ExportDocument {
     std::string geometryId;
     std::string geometryKey;
     MeshResult mesh;
+    Vec3 localOffset;
     IfcInstance instance;
     BatchHint batchHint;
 };
@@ -49,7 +52,10 @@ public:
         out << "    {\n";
         out << "      \"instanceId\": \"" << doc.instance.instanceId << "\",\n";
         out << "      \"geometryId\": \"" << doc.geometryId << "\",\n";
-        out << "      \"transform\": [],\n";
+        // Current pass only fills local-offset translation in transform.
+        out << "      \"transform\": ";
+        writeFloatArray(out, makeTransformMatrixFromLocalOffset(doc.localOffset));
+        out << ",\n";
         out << "      \"batchHint\": {\n";
         out << "        \"geometryKey\": \"" << doc.batchHint.geometryKey << "\",\n";
         out << "        \"canInstance\": " << (doc.batchHint.canInstance ? "true" : "false") << "\n";
@@ -60,36 +66,42 @@ public:
     }
 
 private:
-    static void writeVec3Array(std::ofstream& out, const std::vector<Vec3>& values) {
+    template <typename Container, typename ElementWriter>
+    static void writeJsonArray(std::ofstream& out,
+                               const Container& values,
+                               ElementWriter&& writeElement) {
         out << "[";
         for (size_t i = 0; i < values.size(); ++i) {
             if (i > 0) {
                 out << ",";
             }
-            out << "[" << values[i].x << "," << values[i].y << "," << values[i].z << "]";
+            writeElement(values[i]);
         }
         out << "]";
+    }
+
+    static void writeVec3Array(std::ofstream& out, const std::vector<Vec3>& values) {
+        writeJsonArray(out, values, [&](const Vec3& value) {
+            out << "[" << value.x << "," << value.y << "," << value.z << "]";
+        });
     }
 
     static void writeVec2Array(std::ofstream& out, const std::vector<Vec2>& values) {
-        out << "[";
-        for (size_t i = 0; i < values.size(); ++i) {
-            if (i > 0) {
-                out << ",";
-            }
-            out << "[" << values[i].x << "," << values[i].y << "]";
-        }
-        out << "]";
+        writeJsonArray(out, values, [&](const Vec2& value) {
+            out << "[" << value.x << "," << value.y << "]";
+        });
     }
 
     static void writeUIntArray(std::ofstream& out, const std::vector<unsigned int>& values) {
-        out << "[";
-        for (size_t i = 0; i < values.size(); ++i) {
-            if (i > 0) {
-                out << ",";
-            }
-            out << values[i];
-        }
-        out << "]";
+        writeJsonArray(out, values, [&](unsigned int value) {
+            out << value;
+        });
+    }
+
+    template <size_t N>
+    static void writeFloatArray(std::ofstream& out, const std::array<float, N>& values) {
+        writeJsonArray(out, values, [&](float value) {
+            out << value;
+        });
     }
 };
