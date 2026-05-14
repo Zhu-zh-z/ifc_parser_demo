@@ -48,17 +48,22 @@ int main(int argc, char** argv) {
 
         // schema keys/hints + JSON export
         const std::string geometryKey = generateGeometryKey(mesh);
+        const IfcInstance& primaryInstance = extracted.instances.front();
+
         BatchHint hint;
         hint.geometryKey = geometryKey;
-        hint.canInstance = true;
+        hint.canInstance = !mesh.positions.empty()
+            && !mesh.indices.empty()
+            && (primaryInstance.sourceType == "IfcFacetedBrep"
+                || primaryInstance.sourceType == "IfcTriangulatedFaceSet");
 
         ExportDocument doc;
-        doc.geometryId = extracted.instances.front().geometryId.empty()
+        doc.geometryId = primaryInstance.geometryId.empty()
             ? "geom_box_001"
-            : extracted.instances.front().geometryId;
+            : primaryInstance.geometryId;
         doc.geometryKey = geometryKey;
         doc.mesh = mesh;
-        doc.instance = extracted.instances.front();
+        doc.instance = primaryInstance;
         doc.batchHint = hint;
 
         JsonExporter exporter;

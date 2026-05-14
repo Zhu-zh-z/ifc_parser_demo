@@ -63,14 +63,26 @@ with open(sys.argv[1], "r", encoding="utf-8") as f:
     data = json.load(f)
 
 mesh = data["geometries"][0]["mesh"]
-print(len(mesh["positions"]), len(mesh["indices"]), len(mesh["normals"]))
+geometry = data["geometries"][0]
+instance = data["instances"][0]
+print(
+    len(mesh["positions"]),
+    len(mesh["indices"]),
+    len(mesh["normals"]),
+    geometry["geometryKey"],
+    instance["batchHint"]["geometryKey"],
+    instance["batchHint"]["canInstance"],
+)
 PY
 )"
 
   local actual_positions
   local actual_indices
   local actual_normals
-  read -r actual_positions actual_indices actual_normals <<<"$counts"
+  local actual_geometry_key
+  local actual_batch_key
+  local actual_can_instance
+  read -r actual_positions actual_indices actual_normals actual_geometry_key actual_batch_key actual_can_instance <<<"$counts"
 
   if [[ "$actual_positions" != "$expected_positions" ]]; then
     echo "Smoke test error: positions count mismatch for $input_ifc" >&2
@@ -90,6 +102,30 @@ PY
     echo "Smoke test error: normals count does not match positions for $input_ifc" >&2
     echo "Positions: $actual_positions" >&2
     echo "Normals: $actual_normals" >&2
+    exit 1
+  fi
+
+  if [[ "$actual_geometry_key" == "box_3800_1600_2200" ]]; then
+    echo "Smoke test error: geometry key is still using the old hardcoded value for $input_ifc" >&2
+    exit 1
+  fi
+
+  if [[ "$actual_geometry_key" != gk_* ]]; then
+    echo "Smoke test error: geometry key format mismatch for $input_ifc" >&2
+    echo "Actual geometry key: $actual_geometry_key" >&2
+    exit 1
+  fi
+
+  if [[ "$actual_batch_key" != "$actual_geometry_key" ]]; then
+    echo "Smoke test error: batchHint geometryKey mismatch for $input_ifc" >&2
+    echo "Geometry key: $actual_geometry_key" >&2
+    echo "Batch key: $actual_batch_key" >&2
+    exit 1
+  fi
+
+  if [[ "$actual_can_instance" != "True" && "$actual_can_instance" != "true" ]]; then
+    echo "Smoke test error: canInstance should be true for supported fixtures: $input_ifc" >&2
+    echo "Actual canInstance: $actual_can_instance" >&2
     exit 1
   fi
 }
