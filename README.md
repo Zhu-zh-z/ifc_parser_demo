@@ -41,7 +41,7 @@ These computations will first live in `geometry_myimpl.cpp` as a minimal impleme
 
 ## Limitations
 
-Reusable geometry is currently limited to simple planar, hard-edge shapes such as boxes and L-shapes. Complex surfaces, holes, booleans, special UV layouts, and unsafe scaling should stay non-instanced until safe reuse can be proven.
+Reusable geometry is currently limited to simple planar, hard-edge shapes such as boxes and L-shapes. Complex surfaces, holes, booleans, texture/UV workflows, and unsafe scaling should stay non-instanced until safe reuse can be proven.
 
 Geometry prototypes keep real dimensions: this pass only centers `mesh.positions` and writes the original center into `transform` as local-offset translation. It does not yet make keys independent from vertex/index ordering differences.
 

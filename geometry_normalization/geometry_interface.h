@@ -10,6 +10,7 @@
 struct MeshResult {
     std::vector<Vec3> positions;
     std::vector<Vec3> normals;
+    // TODO: generate UVs or handle textures.
     std::vector<Vec2> uvs;
     std::vector<unsigned int> indices;
 };
