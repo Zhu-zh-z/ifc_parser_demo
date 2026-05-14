@@ -8,14 +8,10 @@ It is not a replacement for mature IFC tools such as IfcOpenShell or xBIM. The d
 
 For now, it validates a clear minimal pipeline:
 
-1. Read a `.ifc` file.
-2. Extract a minimal subset of the IFC STEP Part 21 text format.
-3. Identify supported simplified test elements and their `Body` geometric representations.
-4. Support two restricted geometry inputs: planar polygon faces extracted from `IfcFacetedBrep`, and already-triangulated `IfcTriangulatedFaceSet`.
-5. Convert quadrilateral faces, concave polygons, and already-triangulated faces into a unified renderable triangle mesh.
-6. Generate a `geometryId` and a stable `geometryKey` for the converted geometry.
-7. Generate JSON for a GPU buffer-oriented layout as a simplified prototype of a future IFCX-like / intermediate schema.
-8. Preserve the minimum hint information needed for a future geometry cache and instanced batching.
+1. Read a `.ifc` file and extract a minimal subset of the STEP Part 21 text format.
+2. Pick supported test elements and their `Body` representations, restricted to `IfcFacetedBrep` and `IfcTriangulatedFaceSet`.
+3. Normalize both inputs into a unified renderable triangle mesh, then assign a `geometryId` and a content-stable `geometryKey`.
+4. Emit JSON in a GPU buffer-oriented layout, plus the minimum hints needed for a future geometry cache and instanced batching.
 
 ## Geometry Conversion Notes
 
@@ -35,7 +31,8 @@ The public factory currently lives in `geometry_myimpl.cpp`; the hand-written co
 - `geometryKey`: Stable reuse key generated from mesh content.
 - `batchHint`: Rendering metadata, not standard IFC semantics.
 - `canInstance`: Whether the geometry is safe for future instanced batching.
-- `transform`: Instance matrix; currently only stores the local offset for centered geometry.
+- `transform`: Instance matrix serialized as 16 numbers. The translation lives in `transform[12..14]` and currently only stores the local offset that re-centers the canonicalized mesh.
+- JSON layout: positions and normals use nested `[x, y, z]` arrays for readability today, with room to switch to flat, GPU-uploadable buffers in a future IFCX-like schema.
 
 ## Limitations
 
