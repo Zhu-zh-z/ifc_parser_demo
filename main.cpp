@@ -38,9 +38,6 @@ int main(int argc, char** argv) {
         if (extracted.instances.empty()) {
             throw std::runtime_error("Extractor returned no instances.");
         }
-        for (const IfcInstance& instance : extracted.instances) {
-            std::cout << formatExtractionLogLine(instance) << "\n";
-        }
 
         // geometry_normalization
         std::unique_ptr<IGeometryNormalizer> normalizer = createGeometryMyImpl();

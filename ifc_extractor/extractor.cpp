@@ -3,6 +3,7 @@
 #include <charconv>
 #include <cctype>
 #include <cstdlib>
+#include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -259,6 +260,58 @@ const StepEntity* findEntity(const std::unordered_map<int, StepEntity>& entities
     return &it->second;
 }
 
+const StepEntity* findEntityWithType(const std::unordered_map<int, StepEntity>& entities,
+                                     int id,
+                                     std::string_view expectedType,
+                                     size_t minArgCount = 0) {
+    const StepEntity* entity = findEntity(entities, id);
+    if (entity == nullptr) {
+        return nullptr;
+    }
+    if (!expectedType.empty() && entity->type != expectedType) {
+        return nullptr;
+    }
+    if (entity->args.size() < minArgCount) {
+        return nullptr;
+    }
+    return entity;
+}
+
+std::vector<int> readRefIdsFromArg(const StepEntity& entity, size_t argIndex) {
+    if (argIndex >= entity.args.size()) {
+        return {};
+    }
+    return parseRefList(entity.args[argIndex]);
+}
+
+std::vector<const StepEntity*> walkReferencedEntities(const std::unordered_map<int, StepEntity>& entities,
+                                                      const StepEntity& fromEntity,
+                                                      size_t argIndex,
+                                                      std::string_view expectedType = {},
+                                                      size_t minArgCount = 0) {
+    std::vector<const StepEntity*> resolved;
+    for (const int refId : readRefIdsFromArg(fromEntity, argIndex)) {
+        const StepEntity* refEntity = findEntityWithType(entities, refId, expectedType, minArgCount);
+        if (refEntity != nullptr) {
+            resolved.push_back(refEntity);
+        }
+    }
+    return resolved;
+}
+
+const StepEntity* walkFirstReferencedEntity(const std::unordered_map<int, StepEntity>& entities,
+                                            const StepEntity& fromEntity,
+                                            size_t argIndex,
+                                            std::string_view expectedType = {},
+                                            size_t minArgCount = 0) {
+    const std::vector<const StepEntity*> resolved =
+        walkReferencedEntities(entities, fromEntity, argIndex, expectedType, minArgCount);
+    if (resolved.empty()) {
+        return nullptr;
+    }
+    return resolved.front();
+}
+
 Vec3 parseCartesianPoint(const StepEntity& pointEntity) {
     if (pointEntity.type != "IFCCARTESIANPOINT" || pointEntity.args.empty()) {
         throw std::runtime_error("Invalid IFCCARTESIANPOINT entity.");
@@ -277,21 +330,17 @@ Vec3 parseCartesianPoint(const StepEntity& pointEntity) {
 }
 
 std::vector<int> resolveShapeRepresentationRefs(const std::unordered_map<int, StepEntity>& entities, int productShapeId) {
-    const StepEntity* productShape = findEntity(entities, productShapeId);
-    if (productShape == nullptr || productShape->type != "IFCPRODUCTDEFINITIONSHAPE" || productShape->args.size() < 3) {
+    const StepEntity* productShape =
+        findEntityWithType(entities, productShapeId, "IFCPRODUCTDEFINITIONSHAPE", 3);
+    if (productShape == nullptr) {
         return {};
     }
 
-    std::vector<int> shapeRepresentationIds = parseRefList(productShape->args[2]);
     std::vector<int> geometryIds;
-    for (const int shapeRepresentationId : shapeRepresentationIds) {
-        const StepEntity* shapeRepresentation = findEntity(entities, shapeRepresentationId);
-        if (shapeRepresentation == nullptr || shapeRepresentation->type != "IFCSHAPEREPRESENTATION" ||
-            shapeRepresentation->args.size() < 4) {
-            continue;
-        }
-
-        const std::vector<int> shapeGeometryIds = parseRefList(shapeRepresentation->args[3]);
+    const std::vector<const StepEntity*> shapeRepresentations =
+        walkReferencedEntities(entities, *productShape, 2, "IFCSHAPEREPRESENTATION", 4);
+    for (const StepEntity* shapeRepresentation : shapeRepresentations) {
+        const std::vector<int> shapeGeometryIds = readRefIdsFromArg(*shapeRepresentation, 3);
         geometryIds.insert(geometryIds.end(), shapeGeometryIds.begin(), shapeGeometryIds.end());
     }
 
@@ -299,50 +348,33 @@ std::vector<int> resolveShapeRepresentationRefs(const std::unordered_map<int, St
 }
 
 std::vector<IfcFace> resolveFacetedBrepFaces(const std::unordered_map<int, StepEntity>& entities, int brepId) {
-    const StepEntity* brep = findEntity(entities, brepId);
-    if (brep == nullptr || brep->type != "IFCFACETEDBREP" || brep->args.empty()) {
+    const StepEntity* brep = findEntityWithType(entities, brepId, "IFCFACETEDBREP", 1);
+    if (brep == nullptr) {
         return {};
     }
 
-    const std::vector<int> shellRefs = parseRefList(brep->args[0]);
-    if (shellRefs.empty()) {
-        return {};
-    }
-
-    const StepEntity* shell = findEntity(entities, shellRefs.front());
-    if (shell == nullptr || shell->type != "IFCCLOSEDSHELL" || shell->args.empty()) {
+    const StepEntity* shell = walkFirstReferencedEntity(entities, *brep, 0, "IFCCLOSEDSHELL", 1);
+    if (shell == nullptr) {
         return {};
     }
 
     std::vector<IfcFace> faces;
-    const std::vector<int> faceRefs = parseRefList(shell->args[0]);
+    const std::vector<int> faceRefs = readRefIdsFromArg(*shell, 0);
     std::unordered_map<int, Vec3> pointCache;
     pointCache.reserve(faceRefs.size() * 4);
-    for (const int faceRef : faceRefs) {
-        const StepEntity* faceEntity = findEntity(entities, faceRef);
-        if (faceEntity == nullptr || faceEntity->type != "IFCFACE" || faceEntity->args.empty()) {
-            continue;
-        }
-
-        const std::vector<int> faceBoundRefs = parseRefList(faceEntity->args[0]);
-        for (const int faceBoundRef : faceBoundRefs) {
-            const StepEntity* faceBound = findEntity(entities, faceBoundRef);
-            if (faceBound == nullptr || faceBound->type != "IFCFACEOUTERBOUND" || faceBound->args.empty()) {
+    const std::vector<const StepEntity*> faceEntities =
+        walkReferencedEntities(entities, *shell, 0, "IFCFACE", 1);
+    for (const StepEntity* faceEntity : faceEntities) {
+        const std::vector<const StepEntity*> faceBounds =
+            walkReferencedEntities(entities, *faceEntity, 0, "IFCFACEOUTERBOUND", 1);
+        for (const StepEntity* faceBound : faceBounds) {
+            const StepEntity* polyLoop =
+                walkFirstReferencedEntity(entities, *faceBound, 0, "IFCPOLYLOOP", 1);
+            if (polyLoop == nullptr) {
                 continue;
             }
-
-            const std::vector<int> polyLoopRefs = parseRefList(faceBound->args[0]);
-            if (polyLoopRefs.empty()) {
-                continue;
-            }
-
-            const StepEntity* polyLoop = findEntity(entities, polyLoopRefs.front());
-            if (polyLoop == nullptr || polyLoop->type != "IFCPOLYLOOP" || polyLoop->args.empty()) {
-                continue;
-            }
-
             IfcFace face;
-            const std::vector<int> pointRefs = parseRefList(polyLoop->args[0]);
+            const std::vector<int> pointRefs = readRefIdsFromArg(*polyLoop, 0);
             for (const int pointRef : pointRefs) {
                 const auto cached = pointCache.find(pointRef);
                 if (cached != pointCache.end()) {
@@ -372,17 +404,15 @@ void resolveTriangulatedFaceSet(const std::unordered_map<int, StepEntity>& entit
                                 int faceSetId,
                                 std::vector<Vec3>& vertices,
                                 std::vector<unsigned int>& triangleIndices) {
-    const StepEntity* faceSet = findEntity(entities, faceSetId);
-    if (faceSet == nullptr || faceSet->type != "IFCTRIANGULATEDFACESET" || faceSet->args.size() < 4) {
+    const StepEntity* faceSet = findEntityWithType(entities, faceSetId, "IFCTRIANGULATEDFACESET", 4);
+    if (faceSet == nullptr) {
         return;
     }
 
-    const std::vector<int> pointListRefs = parseRefList(faceSet->args[0]);
-    if (!pointListRefs.empty()) {
-        const StepEntity* pointList = findEntity(entities, pointListRefs.front());
-        if (pointList != nullptr && pointList->type == "IFCCARTESIANPOINTLIST3D" && !pointList->args.empty()) {
-            appendPointList3D(pointList->args[0], vertices);
-        }
+    const StepEntity* pointList =
+        walkFirstReferencedEntity(entities, *faceSet, 0, "IFCCARTESIANPOINTLIST3D", 1);
+    if (pointList != nullptr) {
+        appendPointList3D(pointList->args[0], vertices);
     }
 
     appendTriangleIndices(faceSet->args[3], triangleIndices);
@@ -430,6 +460,7 @@ ExtractResult IfcExtractor::extract(const IfcInput& input) {
         }
 
         if (!instance.sourceType.empty()) {
+            std::cout << formatExtractionLogLine(instance) << "\n";
             result.instances.push_back(std::move(instance));
         }
     }
