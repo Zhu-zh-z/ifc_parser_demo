@@ -32,7 +32,6 @@ The public factory currently lives in `geometry_myimpl.cpp`; the hand-written co
 - `batchHint`: Rendering metadata, not standard IFC semantics.
 - `canInstance`: Whether the geometry is safe for future instanced batching.
 - `transform`: Instance matrix serialized as 16 numbers. The translation lives in `transform[12..14]` and currently only stores the local offset that re-centers the canonicalized mesh.
-- JSON layout: positions and normals use nested `[x, y, z]` arrays for readability today, with room to switch to flat, GPU-uploadable buffers in a future IFCX-like schema.
 
 ## Limitations
 
