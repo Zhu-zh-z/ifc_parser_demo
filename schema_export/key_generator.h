@@ -1,14 +1,13 @@
 #pragma once
 
-#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <iomanip>
-#include <limits>
 #include <sstream>
 #include <string>
 
 #include "geometry_normalization/geometry_interface.h"
+#include "schema_export/detail/bounding_box.h"
 
 inline std::string generateGeometryKey(const MeshResult& mesh) {
     if (mesh.positions.empty()) {
@@ -39,31 +38,13 @@ inline std::string generateGeometryKey(const MeshResult& mesh) {
         mixUInt64(state, static_cast<std::uint64_t>(value));
     };
 
-    float minX = std::numeric_limits<float>::max();
-    float minY = std::numeric_limits<float>::max();
-    float minZ = std::numeric_limits<float>::max();
-    float maxX = std::numeric_limits<float>::lowest();
-    float maxY = std::numeric_limits<float>::lowest();
-    float maxZ = std::numeric_limits<float>::lowest();
-
-    for (const Vec3& position : mesh.positions) {
-        minX = std::min(minX, position.x);
-        minY = std::min(minY, position.y);
-        minZ = std::min(minZ, position.z);
-        maxX = std::max(maxX, position.x);
-        maxY = std::max(maxY, position.y);
-        maxZ = std::max(maxZ, position.z);
-    }
-
-    const float dimX = maxX - minX;
-    const float dimY = maxY - minY;
-    const float dimZ = maxZ - minZ;
+    const Vec3 dimensions = computeMeshBoundingBox(mesh.positions).dimensions();
 
     std::uint64_t hashState = kFnvOffset;
 
-    mixInt64(hashState, quantize(dimX));
-    mixInt64(hashState, quantize(dimY));
-    mixInt64(hashState, quantize(dimZ));
+    mixInt64(hashState, quantize(dimensions.x));
+    mixInt64(hashState, quantize(dimensions.y));
+    mixInt64(hashState, quantize(dimensions.z));
     mixUInt64(hashState, static_cast<std::uint64_t>(mesh.positions.size()));
     mixUInt64(hashState, static_cast<std::uint64_t>(mesh.normals.size()));
     mixUInt64(hashState, static_cast<std::uint64_t>(mesh.uvs.size()));
